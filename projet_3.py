@@ -29,6 +29,12 @@ def print_top_words_index(item_set):
         occurences, word = occurences_word  # Unpack (occurences, word)
         print('%d: %s (%d)' % (index, word, occurences))
 
+def split_genres(elem):
+    tmp = []
+    for i in elem[2] :
+        tmp.append((elem[0],elem[1],i,elem[3]))
+    return tmp
+
 try:
     # Load the RDD as a text file and persist it (cached into memory or disk)
     ratings_rdd = sc.textFile('sample_ratings.csv')
@@ -38,13 +44,13 @@ try:
 
     user = 4    # l'utilisateur d'id 4 a note beaucoup de films, le resultat sera pertinent
 
-    #séparation des valeurs ratings, 
+    #séparation des valeurs ratings,
     ratings_subset = ratings_rdd.flatMap(lambda line : line.split('\n'))\
     .filter( lambda line : line != header_rating)\
     .map(lambda line : line.split(','))\
     .filter(lambda line: line[0] == '4')\
     .map(lambda line: (line[1], line[2]))
-    
+
     #séparation des valeurs movies
     movies_subset = movies_rdd.flatMap(lambda line : line.split('\n'))\
     .map(lambda x : x.replace(', ',': '))\
@@ -66,9 +72,17 @@ try:
     # plus qu'a faire les moyennes par genre recommander les 5 meilleurs de ce genre
     rdd_join_flattened = rdd_join.map(lambda x: (x[0], x[1][1][0], x[1][1][1], x[1][0]))
 
+
+
+    rdd_join_split = rdd_join_flattened.map(lambda line : (line[0], line[1], line[2].split('|'),line[3])).flatMap(lambda x : split_genres(x))
+
     print("\n ---------------There is the first result----------------")
     print('\nWe have %d lines' % rdd_join_flattened.count())
-    for x in rdd_join_flattened.take(800) :
+    for x in rdd_join_flattened.take(50) :
+        print(x)
+    print("\n ---------------There is the first result----------------")
+    print('\nWe have %d lines' % rdd_join_split.count())
+    for x in rdd_join_split.take(50) :
         print(x)
 # Except an exception, the only thing that it will do is to throw it again
 except Exception as e:
