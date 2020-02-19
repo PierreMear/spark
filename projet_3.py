@@ -86,7 +86,39 @@ try:
 
     favorite_genre = rdd_sorted_by_note.first()[1]
 
-    print(favorite_genre)
+    print("Favorite Genre: " + favorite_genre)
+
+    #séparation des valeurs ratings
+    ratings_subset = ratings_rdd.flatMap(lambda line : line.split('\n'))\
+    .filter( lambda line : line != header_rating)\
+    .map(lambda line : line.split(','))\
+    .map(lambda line: (line[1],(float(line[2]),1))) #ajout d'un 1 avec la note pour pouvoir faire le count
+    header_movies = movies_rdd.first()
+    #séparation des valeurs movies
+    movies_subset = movies_rdd.flatMap(lambda line : line.split('\n'))\
+    .map(lambda x : x.replace(', ',': '))\
+    .filter( lambda line : line != header_movies)\
+    .map(lambda line : line.split(','))\
+    .map(lambda line : (line[0], line[1], line[2].split('|')))\
+    .filter(lambda line : favorite_genre in line[2])
+    # filtre par id de movie puis somme des notes et des 1 pour le count
+    #division entre count et somme des notes pour note moyenne, on stocke aussi le nombre de commentaires
+    ratings_reduced = ratings_subset.reduceByKey(lambda a,b : (a[0]+b[0],a[1]+b[1]))\
+    .filter( lambda line : line[1][1] >= 50)\
+    .map(lambda x : (x[0],x[1][0]/x[1][1],x[1][1]))\
+    .map(lambda x : (x[0],(x[1],x[2])))
+
+    rdd_join = ratings_reduced.join(movies_subset)
+
+    # on trie le rdd en mettant la note moyenne en clef, puis le nom de film puis le nombre de notes
+    ratings_sorted = rdd_join.map(lambda item: (item[1][0][0], (item[1][1],item[1][0][1])))\
+    .sortByKey(ascending=False)\
+    .map(lambda item: (item[1][0], item[0]))
+
+    print("\n ---------------There is the result----------------")
+    print('%d recommendations' % ratings_sorted.count())
+    for x in ratings_sorted.take(50) :
+        print(x)
 
     # print("\n ---------------There is the first result----------------")
     # print('\nWe have %d lines' % rdd_join_flattened.count())
