@@ -72,18 +72,33 @@ try:
     # plus qu'a faire les moyennes par genre recommander les 5 meilleurs de ce genre
     rdd_join_flattened = rdd_join.map(lambda x: (x[0], x[1][1][0], x[1][1][1], x[1][0]))
 
-
-
     rdd_join_split = rdd_join_flattened.map(lambda line : (line[0], line[1], line[2].split('|'),line[3])).flatMap(lambda x : split_genres(x))
 
-    print("\n ---------------There is the first result----------------")
-    print('\nWe have %d lines' % rdd_join_flattened.count())
-    for x in rdd_join_flattened.take(50) :
-        print(x)
-    print("\n ---------------There is the first result----------------")
-    print('\nWe have %d lines' % rdd_join_split.count())
-    for x in rdd_join_split.take(50) :
-        print(x)
+    # calcule les moyennes par genre, exclut les genres notés moins de 30 fois
+    rdd_genre_average = rdd_join_split.map(lambda line: (line[2], (float(line[3]), 1)))\
+    .reduceByKey(lambda a,b : (a[0]+b[0],a[1]+b[1]))\
+    .filter(lambda line : line[1][1] >= 40)\
+    .map(lambda line : (line[0],line[1][0]/line[1][1]))
+
+    # passage de la note moyenne en clé de tuple pour pouvoir trier par rapport à la note et récupérer le genre le mieux noté
+    rdd_sorted_by_note = rdd_genre_average.map(lambda line: (line[1], line[0]))\
+    .sortByKey(ascending=False)
+
+    favorite_genre = rdd_sorted_by_note.first()[1]
+
+    print(favorite_genre)
+
+    # print("\n ---------------There is the first result----------------")
+    # print('\nWe have %d lines' % rdd_join_flattened.count())
+    # for x in rdd_join_flattened.take(50) :
+    #     print(x)
+    # print("\n ---------------There is the first result----------------")
+    # print('\nWe have %d lines' % rdd_join_split.count())
+    # for x in rdd_join_split.take(50) :
+    #     print(x)
+    # print('\nWe have %d lines' % rdd_sorted_by_note.count())
+    # for x in rdd_sorted_by_note.take(50) :
+    #     print(x)
 # Except an exception, the only thing that it will do is to throw it again
 except Exception as e:
     raise e
